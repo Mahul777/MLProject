@@ -67,6 +67,7 @@ class DataIngestion:
 # 🔁 Entry point
 # If this script is run directly, start the data ingestion process.
 from src.components.data_transformation import DataTransformation
+from src.components.model_trainer import ModelTrainer
 
 if __name__ == "__main__":
     obj = DataIngestion()
@@ -74,6 +75,9 @@ if __name__ == "__main__":
 
     data_transformation=DataTransformation()
     train_arr,test_arr,_=data_transformation.initiate_data_transformation(train_data,test_data)
+
+    modeltrainer=ModelTrainer()
+    print(modeltrainer.initiate_model_trainer(train_arr,test_arr))
 
 
 #your code is doing, step by step

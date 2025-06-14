@@ -20,19 +20,21 @@ from src.utils import save_object
 # ✅ Configuration class to define the preprocessor file path
 @dataclass
 class DataTransformationConfig:
-    preprocessor_obj_file_path = os.path.join('artifacts', "preprocessor.pkl")
-
+    preprocessor_obj_file_path = os.path.join('artifacts', "preprocessor.pkl")  # Path to save the preprocessor object
 
 # ✅ Main class for data transformation logic
 class DataTransformation:
     def __init__(self):
+        # Initialize config with default preprocessor path
         self.data_transformation_config = DataTransformationConfig()
 
     def get_data_transformer_object(self):
         '''
         Creates preprocessing pipelines for both numerical and categorical columns.
+        Returns a ColumnTransformer object.
         '''
         try:
+            # Define which columns are numerical and which are categorical
             numerical_columns = ["writing_score", "reading_score"]
             categorical_columns = [
                 "gender",
@@ -42,13 +44,13 @@ class DataTransformation:
                 "test_preparation_course",
             ]
 
-            # 🔢 Numerical pipeline
+            # 🔢 Numerical pipeline: impute missing values with median, then scale
             num_pipeline = Pipeline(steps=[
                 ("imputer", SimpleImputer(strategy="median")),
                 ("scaler", StandardScaler())
             ])
 
-            # 🧠 Categorical pipeline
+            # 🧠 Categorical pipeline: impute with most frequent, one-hot encode, then scale
             cat_pipeline = Pipeline(steps=[
                 ("imputer", SimpleImputer(strategy="most_frequent")),
                 ("one_hot_encoder", OneHotEncoder()),
@@ -58,7 +60,7 @@ class DataTransformation:
             logging.info(f"Categorical columns: {categorical_columns}")
             logging.info(f"Numerical columns: {numerical_columns}")
 
-            # 🔗 Combine pipelines
+            # 🔗 Combine pipelines into a ColumnTransformer
             preprocessor = ColumnTransformer(transformers=[
                 ("num_pipeline", num_pipeline, numerical_columns),
                 ("cat_pipeline", cat_pipeline, categorical_columns)
@@ -67,6 +69,7 @@ class DataTransformation:
             return preprocessor
 
         except Exception as e:
+            # Raise a custom exception if anything goes wrong
             raise CustomException(e, sys)
 
     def initiate_data_transformation(self, train_path, test_path):
@@ -74,11 +77,11 @@ class DataTransformation:
         Reads datasets, cleans data, applies transformation, and returns arrays + preprocessor path.
         '''
         try:
-            # 📥 Load data
+            # 📥 Load train and test data from CSV files
             train_df = pd.read_csv(train_path)
             test_df = pd.read_csv(test_path)
 
-            # 🧹 Clean column names
+            # 🧹 Clean column names: strip spaces, lowercase, replace spaces with underscores, remove quotes
             train_df.columns = (
                 train_df.columns.str.strip()
                 .str.lower()
@@ -99,13 +102,13 @@ class DataTransformation:
             target_column_name = "math_score"
             numerical_columns = ["writing_score", "reading_score"]
 
-            # ✅ Ensure target column is present
+            # ✅ Ensure target column is present in both datasets
             assert target_column_name in train_df.columns, \
                 f"Target column '{target_column_name}' not found in train data."
             assert target_column_name in test_df.columns, \
                 f"Target column '{target_column_name}' not found in test data."
 
-            # ✅ Clean numeric columns to remove quotes and convert to float
+            # ✅ Clean numeric columns: remove quotes and convert to float
             for col in numerical_columns:
                 train_df[col] = (
                     train_df[col]
@@ -122,7 +125,7 @@ class DataTransformation:
                     .astype(float)
                 )
 
-            # ➗ Split input features and target
+            # ➗ Split input features and target for train and test sets
             input_feature_train_df = train_df.drop(columns=[target_column_name], axis=1)
             target_feature_train_df = train_df[target_column_name]
 
@@ -133,15 +136,14 @@ class DataTransformation:
 
             # 🛠 Get and apply preprocessor
             preprocessing_obj = self.get_data_transformer_object()
-
             input_feature_train_arr = preprocessing_obj.fit_transform(input_feature_train_df)
             input_feature_test_arr = preprocessing_obj.transform(input_feature_test_df)
 
-            # 🧱 Combine features + target
+            # 🧱 Combine features with target for both train and test arrays
             train_arr = np.c_[input_feature_train_arr, np.array(target_feature_train_df)]
             test_arr = np.c_[input_feature_test_arr, np.array(target_feature_test_df)]
 
-            # 💾 Save preprocessor object
+            # 💾 Save preprocessor object to disk for later use
             save_object(
                 file_path=self.data_transformation_config.preprocessor_obj_file_path,
                 obj=preprocessing_obj
@@ -149,7 +151,7 @@ class DataTransformation:
 
             logging.info("Preprocessing object saved successfully")
 
-            # ✅ Return results
+            # ✅ Return transformed train and test arrays, and preprocessor path
             return (
                 train_arr,
                 test_arr,
@@ -157,6 +159,7 @@ class DataTransformation:
             )
 
         except Exception as e:
+            # Raise a custom exception if anything goes wrong
             raise CustomException(e, sys)
 
 
